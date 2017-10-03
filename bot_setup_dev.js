@@ -1,10 +1,14 @@
 // Soundwave
 // Dev Configuration
 module.exports = {
-  // Slack bot token
-  token: 'slackBotToken',
-  // Slack channel name to post bot feedback into
-  channel: 'feed-now-playing',
-  // Spotify web api token
-  apiToken: 'spotifyWebApiToken'
+    // Slack bot token
+    slackBotToken: 'yourDevSlackBotToken',
+    // Slack channel name to post bot feedback into
+    slackChannel: 'feed-now-playing-dev',
+    // Slack web api token
+    slackApiToken: 'yourSlackApiToken',
+    // Spotify Client ID
+    spotifyClientId: 'yourSpotifyClientId',
+    // Spotify Client Secret
+    spotifyClientSecret: 'yourSpotifyClientSecret'
 };

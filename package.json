@@ -4,12 +4,14 @@
   "description": "Soundwave is a Slackbot interfacing with Spotify via AppleScript",
   "dependencies": {
     "botkit": "^0.2.0",
+    "electron": "^1.4.15",
     "menubar": "^5.2.3",
+    "node-spotify-api": "^1.0.7",
     "q": "^1.4.1",
+    "request": "^2.83.0",
     "spotify-node-applescript": "^1.0.0"
   },
   "devDependencies": {
-    "electron": "^1.4.15",
     "electron-packager": "^8.5.2"
   },
   "main": "soundwave.js",

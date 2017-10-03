@@ -54,7 +54,7 @@ let setup = require(devFlag[0] === '-dev' ? './bot_setup_dev.js' : './bot_setup.
 let Botkit = require('botkit');
 let Spotify = require('spotify-node-applescript');
 
-let https = require('https');
+let request = require('request');
 let os = require('os');
 let q = require('q');
 
@@ -62,29 +62,20 @@ let trackFormatSimple = (track) => `_${track.name}_ by *${track.artist}*`;
 let trackFormatDetail = (track) => `_${track.name}_ by _${track.artist}_ is from the album *${track.album}*`;
 let getArtworkUrlFromTrack = (track, callback) => {
     let trackId = track.id.split(':')[2];
-    let reqUrl = 'https://api.spotify.com/v1/tracks/'+trackId;
-    var req = https.request(reqUrl, function(response) {
-        var str = '';
 
-        response.on('data', function (chunk) {
-            str += chunk;
-        });
+    spotifyApi
+      .request('https://api.spotify.com/v1/tracks/' + trackId)
+      .then(function(response) {
+          if(response && response.album && response.album.images && response.album.images[1]) {
+              callback(response.album.images[1].url);
+          } else {
+              callback('');
+          }
+      })
+      .catch(function(err) {
+        console.error('Error occurred getArtworkUrlFromTrack: ' + err);
+      });
 
-        response.on('end', function() {
-            var json = JSON.parse(str);
-            if(json && json.album && json.album.images && json.album.images[1]) {
-                callback(json.album.images[1].url);
-            }
-            else {
-                callback('');
-            }
-        });
-    });
-    req.end();
-
-    req.on('error', function(e) {
-      console.error('getArtworkUrlFromTrack', e);
-    });
 };
 
 var lastTrackId;
@@ -114,7 +105,7 @@ var bot;
 var initBot = () => {
     if(bot) bot.closeRTM();
     bot = controller.spawn({
-        token: setup.token,
+        token: setup.slackBotToken,
         retry: 20
     }).startRTM(function(err,bot,payload) {
         if (err) {
@@ -131,8 +122,19 @@ controller.on('rtm_close', function(error) {
     }
 });
 
+var spotifyApi;
+var initSpotify = () => {
+    var Spotify = require('node-spotify-api');
+
+    spotifyApi = new Spotify({
+      id: setup.spotifyClientId,
+      secret: setup.spotifyClientSecret
+    });
+};
+
 var init = () => {
     initBot();
+    initSpotify();
 
     bot.api.channels.list({}, function(err, response) {
         if(err) {
@@ -443,10 +445,16 @@ controller.hears(['^shuffle queue'], 'direct_message,direct_mention,mention,ambi
     }
 });
 
-controller.hears('request (track|artist|album|playlist) (.*)(?:\s*-\s*|$)(.*|$)', 'direct_message,direct_mention,mention,ambient', function(bot, message) {
+controller.hears('request (track|artist|album|playlist) (.*)', 'direct_message,direct_mention,mention,ambient', function(bot, message) {
   var requestType = message.match[1];
   var requestName = message.match[2];
-  var artist = message.match[3];
+  var artist = null;
+
+  if(requestName.includes(" - ")) {
+      var split = requestName.split("-");
+      requestName = split[0];
+      artist = split[1];
+  }
 
   if(requestType && requestName) {
 
@@ -485,7 +493,7 @@ controller.hears('request (track|artist|album|playlist) (.*)(?:\s*-\s*|$)(.*|$)'
     if(banned) {
         bannedUsers.push(message.user);
         getUser(message.user, function(userInfo) {
-            var messageTxt = userInfo.profile.first_name + ' has been banned for a dud request: ' + requestName.trim() + (artist.length ? ' - '+artist.trim() : '');
+            var messageTxt = userInfo.profile.first_name + ' has been banned for a dud request: ' + requestName.trim() + (artist && artist.length ? ' - '+artist.trim() : '');
 
             bot.say({
                 channel: channelId,
@@ -504,61 +512,43 @@ controller.hears('request (track|artist|album|playlist) (.*)(?:\s*-\s*|$)(.*|$)'
     }
 
     // Let's search
-    var query = encodeURI('https://api.spotify.com/v1/search?type='+requestType+'&q='+requestType + ':'+ requestName.trim() + (artist.length ? ' artist:'+artist.trim() : '')+'&market=AU');
+    var query = encodeURI(requestType + ':'+ requestName.trim() + ((artist && artist.length) ? ' artist:'+artist.trim() : '')+'&market=AU');
 
-    console.log(requestType, ':', requestName, ',', artist, ':::', query);
+    console.log(requestType, ':', requestName, ',', artist || 'no artist', ':::', query);
 
-    var s = https.request(query, function(response) {
-        var data = '';
+    spotifyApi.search({
+          type: requestType,
+          query: query
+      }).then(function(response) {
+          var parsed = response[requestType+"s"];
 
-        response.on('data', function (chunk) {
-            data += chunk;
-        });
+          if(parsed.items.length && parsed.items[0].uri) {
 
-        response.on('end', function() {
-            var parsed = JSON.parse(data);
-            parsed = parsed[requestType+'s'];
+              console.log('Found track:', parsed.items[0]);
 
+              var spotifyUri = parsed.items[0].uri;
+              Spotify.getState(function(err, state) {
+                  console.log('Play or queue state', state);
 
-            if(parsed.items.length && parsed.items[0].uri) {
+                  if(state.state !== 'playing') {
+                      Spotify.playTrack(spotifyUri, function(){
+                          getUser(message.user, function(userInfo) {
+                              bot.reply(message, 'Coming right up, ' + userInfo.profile.first_name + '!');
+                          });
+                      });
+                  } else {
+                      // Add to queue
+                      queue.push(parsed.items[0]);
+                      addReaction('white_check_mark', message, bot);
+                  }
+              });
 
-
-                console.log('Found track:', parsed.items[0]);
-
-                var spotifyUri = parsed.items[0].uri;
-
-                Spotify.getState(function(err, state) {
-
-                    console.log('Play or queue state', state);
-
-                    if(state.state !== 'playing') {
-
-                        Spotify.playTrack(spotifyUri, function(){
-                            getUser(message.user, function(userInfo) {
-                                bot.reply(message, 'Coming right up, ' + userInfo.profile.first_name + '!');
-                            });
-                        });
-
-                    } else {
-
-                        // Add to queue
-                        queue.push(parsed.items[0]);
-
-                        //bot.reply(message, "I've added that "+requestType+" to the queue");
-
-                        addReaction('white_check_mark', message, bot);
-                    }
-                });
-
-            } else {
-                //bot.reply(message, "Sorry, I couldn't find that " + requestType);
-                addReaction('no_entry', message, bot);
-            }
-
-        });
-    });
-
-    s.end();
+          } else {
+              addReaction('no_entry', message, bot);
+          }
+      }).catch(function(err) {
+          console.log(err);
+      });
 
   } else {
     bot.reply(message, 'Sorry, you need to send your request as request track `Track` - `Artist`');
@@ -669,7 +659,7 @@ function getUser(userId, callback) {
         } else {
             console.log('Getting info for', userId);
             bot.api.users.info({
-                token: setup.apiToken,
+                token: setup.slackApiToken,
                 user: userId
             }, function(err, userInfo) {
                 if(userInfo.ok) {
@@ -794,7 +784,7 @@ function formatUptime(uptime) {
 }
 
 function verifyChannel(channel) {
-    if(channel && channel.name && channel.id && setup.channel && channel.name == setup.channel) {
+    if(channel && channel.name && channel.id && setup.slackChannel && channel.name == setup.slackChannel) {
         channelId = channel.id;
         console.log('** ...chilling out on #' + channel.name);
         return true;

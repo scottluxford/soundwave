@@ -10,11 +10,15 @@ You'll need to provide a Slack channel, Slack bot token and Spotify Web API toke
 // Release Configuration
 module.exports = {
   // Slack bot token
-  token: 'slackBotToken',
+  slackBotToken: 'yourSlackBotToken',
   // Slack channel name to post bot feedback into
-  channel: 'feed-now-playing',
-  // Spotify web api token
-  apiToken: 'spotifyWebApiToken'
+  slackChannel: 'feed-now-playing',
+  // Slack web api token
+  slackApiToken: 'yourSpotifyWebApiToken',
+  // Spotify Client ID
+  spotifyClientId: 'yourSpotifyClientId',
+  // Spotify Client Secret
+  spotifyClientSecret: 'yourSpotifyClientSecret'
 };
 ```
 
@@ -23,6 +27,4 @@ module.exports = {
 - `npm start` to run dev variant app from CLI without building a new version. Uses `bot_setup_dev.js` config.
 
 ## Building the release app
-- `npm run build` Increments and builds a patch release
-- `npm run build-minor` Increments and builds a minor release
-- `npm run build-major` Increments and builds a major release
+- `npm run build` Builds the prod app 

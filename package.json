@@ -1,22 +1,23 @@
 {
   "name": "Soundwave",
-  "version": "1.5.0",
-  "description": "Soundwave is a Slackbot interfacing with Spotify via AppleScript",
+  "version": "2.0.0",
+  "description": "Soundwave is a menubar app housing a Slackbot interfacing with Spotify via AppleScript",
   "dependencies": {
-    "botkit": "^0.2.0",
-    "electron": "^1.4.15",
-    "menubar": "^5.2.3",
-    "node-spotify-api": "^1.0.7",
-    "q": "^1.4.1",
-    "request": "^2.83.0",
-    "spotify-node-applescript": "^1.0.0"
+    "botkit": "^0.7.4",
+    "botbuilder-adapter-slack": "^1.0.3",
+    "menubar": "^6.0.5",
+    "node-spotify-api": "^1.1.1",
+    "q": "^1.5.1",
+    "request": "^2.88.0",
+    "spotify-node-applescript": "^1.1.1"
   },
   "devDependencies": {
-    "electron-packager": "^8.5.2"
+    "electron": "^5.0.3",
+    "electron-packager": "^13.1.1"
   },
   "main": "soundwave.js",
   "scripts": {
-    "build": "electron-packager . Soundwave --out=./dist --platform=darwin --arch=x64 --icon=Icon.icns --overwrite --ignore=^.*electron-packager.*$",
+    "build": "electron-packager . Soundwave --out=./dist --platform=darwin --arch=x64 --icon=assets/Icon.icns --overwrite --ignore=^.*electron-packager.*$",
     "start": "electron . -dev"
   }
 }

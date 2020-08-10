@@ -12,7 +12,7 @@
     "spotify-node-applescript": "^1.1.1"
   },
   "devDependencies": {
-    "electron": "^5.0.3",
+    "electron": "^7.2.4",
     "electron-packager": "^13.1.1"
   },
   "main": "soundwave.js",
